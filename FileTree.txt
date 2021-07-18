@@ -1,0 +1,15 @@
+0,/,D
+1,carpeta0.1,D
+1,carpeta0.2,D
+1,texto0.1.txt,F
+$$$"""$$$
+Contenido
+mas contenido
+$$$"""$$$
+1,carpeta0.3,D
+2,carpeta0.3.1,D
+3,carpeta0.3.1.1,D
+2,texto0.3.1,F
+$$$"""$$$
+$$$"""$$$
+1,carpeta0.4,D
