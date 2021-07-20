@@ -127,6 +127,8 @@ def archivosAObjetos(lineasA):
 
 #retorna solo la lista de carpetas convertidas en objeto
 def directoriosAObjetos(listaSinA):
+    #omite las lienas en blanco
+    listaSinA=list(filter(lambda x: x!="\n", listaSinA))
     #convertir todas las lineas a directorios
     carpetasObjeto=[]
     for linea in listaSinA:
@@ -142,6 +144,8 @@ def archivoALista(contenidoArchivos):
     lines=file.readlines()
     file.close()
     if contenidoArchivos==False:
+        #omitir las lineas en blanco
+        lines=list(filter(lambda x: x!="\n", lines))
         return lines
     else:
         contadorArchivo=0
@@ -164,6 +168,8 @@ def archivoALista(contenidoArchivos):
                     continue
             else:
                 listaSinArchivos.append(linea)
+        #omitir lineas en blanco
+        listaSinArchivos=list(filter(lambda x: x!="\n", listaSinArchivos))
         return listaSinArchivos
 
 
@@ -255,22 +261,37 @@ def insertarSubcarpetas():
 
 #-------------------------------------------------------
 #recorrer el arbol de forma recursiva
-def recorreArbol(inicio, retorna=False, imprime=False):
+def recorreArbol(inicio, retorna=False, imprime=False, raiz=None):
+
+    #imprime o retorna la raiz
+    if imprime and raiz==None:
+        print(f"Nivel= {inicio.getNivel()} Nombre= {inicio.getNombre()}")
+    if retorna and raiz==None:
+        cadenaR=f"{str(inicio.getNivel())},{inicio.getNombre()},{inicio.getTipo()}\n"
+    else:
+        cadenaR=""
+
+    cadena=""
     if inicio.getSubElementos()==[]:
-        return []
+        return ""
     else:
         for a in inicio.getSubElementos():
             if imprime==True:
                 print(f"Nivel= {a.getNivel()} Nombre= {a.getNombre()}")
-                recorreArbol(a, retorna, imprime)
+                recorreArbol(a, retorna, imprime, 1)
             if retorna==True:
                 if a.getTipo()=="F":
                     separadorArchivo="$$$\"\"\"$$$"
-                    cadena=f"{str(a.getNivel())},{a.getNombre()},{a.getTipo()}\n{separadorArchivo}\n{a.getContenido()}\n{separadorArchivo}\n"
+                    cadena=cadena+cadenaR+f"{str(a.getNivel())},{a.getNombre()},{a.getTipo()}\n{separadorArchivo}\n{a.getContenido()}\n{separadorArchivo}\n"
+                    cadenaR=""
                 if a.getTipo()=="D":
-                    cadena=f"{str(a.getNivel())},{a.getNombre()},{a.getTipo()}\n"
-                return cadena+recorreArbol(a, retorna, imprime)
-
+                    cadena=cadena+cadenaR+f"{str(a.getNivel())},{a.getNombre()},{a.getTipo()}\n"
+                    cadenaR=""
+                subcadena=recorreArbol(a, retorna, imprime, 1)
+                cadena=cadena+subcadena
+        if retorna:
+            return cadena
+#--------------------------------------------------------------------
 #recorrer el arbol de forma recursiva para encontrar el puntero de ruta actual
 def buscaPuntero(inicio):
     if inicio.getPuntero()==True:
@@ -320,9 +341,7 @@ def existeRuta (arbol, ruta, archivo):
                     existe.pop(0)
             if len(existe)==1:
                 rutaObjetos.append(elemento)
-                try:
-                    tmp=tmp.getSubElementos()
-                except: break
+                tmp=existe[0].getSubElementos()
         #al final del ciclo deben ambas listas deben tener la misma longitud
         if rutaObjetos==rutaRequerida:
             disponible=True
@@ -356,11 +375,9 @@ def existeRuta (arbol, ruta, archivo):
                     continue
             #si en el elemento de analisis actual coincide con el nombre, entonces si existe, cambia al siguiente subnivel
             if archivo==True:
-                print("Si archivo")
                 existe=list(filter(lambda x: elemento==x.getNombre(), tmp))
             #si los archivos no son requeridos entonces solo verifica si existe el directorio
             if archivo==False:
-                print("no arhivo")
                 existe=list(filter(lambda x: elemento==x.getNombre(), tmp))
                 if existe[0].getTipo()=="F":
                     existe.pop(0)
@@ -413,4 +430,106 @@ def esRuta(cadena):
 #---------------------------------------------------------
 #escribe el contenido del arbol en el archivo de persistencia
 def escribirArbol(arbol):
-    pass
+    texto=recorreArbol(arbol, retorna=True, imprime=False)
+    file=open("./FileTree.txt", "w")
+    file.write(texto)
+    file.close()
+
+#-----------------------------------------------------------
+#nombre de archivo valido determina ni no coniene algun caracter que afecte el funcionamiento del programa
+def nombreValido(cadena):
+    invalidos=[",", ">", "$$$\"\"\"$$$"]
+    try:
+        contieneInvalidos=list(filter(lambda x: x in cadena, invalidos))
+        if len(contieneInvalidos)>0:
+            return False
+        else: return True
+    except: return False
+
+#--------------------------------------------------------
+#empiezan las funciones propias del sistema de archivos
+#crear archivo admite 4 parametros, el arbol de archivos(obligatorio),nombre (obligatorio), ruta(opcional), contenido(opcional)
+def crearElemento(arbol, nombre, ruta=None, contenido="", archivo=False, carpeta=False):
+    #verifica si el nombre es valido
+    if nombreValido(nombre):
+        #crear el objeto
+        if archivo:
+            archivo=Archivo(nombre, 0, contenido)
+        if carpeta:
+            archivo=Directorio(nombre, 0)
+        #si no se tiene ruta se va a escribir en el puntero actual
+        if ruta==None:
+            puntero=buscaPuntero(arbol)
+            #verifica si existe el archivo en la ruta actual
+            existe=list(filter(lambda x: x.getNombre()==nombre, puntero.getSubElementos()))
+            #si si existe, manda mensaje de error
+            if len(existe)>0:
+                print("No se puede crear archivo con este nombre")
+            #si no existe, adjunta ese archivo a los subelementos
+            else:
+                archivo.setNivel((puntero.getNivel())+1)
+                puntero.aniadirSubElemento(archivo)
+                #escribe el arbol en el archivo de texto
+                escribirArbol(arbol)
+        #si si se especifica la ruta, y es una relativa
+        elif ruta!=None and not(ruta.startswith("/")):
+            #revisa si la ruta existe, y tambien si incluye un archivo de nombre igual
+            destinoDisponible=existeRuta(arbol, ruta, True)
+            destinoOcupado=existeRuta(arbol, (ruta+">"+nombre), True)
+            if (not(destinoOcupado["disponible"])) and (destinoDisponible["disponible"]):
+                #crea el objeto
+                if archivo:
+                    archivo=Archivo(nombre, 0, contenido)
+                if carpeta:
+                    archivo=Directorio(nombre, 0)
+                #posicionate en el directorio donde se debe insertar el archivo
+                tmpPuntero=(buscaPuntero(arbol))
+                for elemento in destinoDisponible["rutaObjetos"]:
+                    busqueda=list(filter(lambda x: x.getNombre()==elemento, tmpPuntero.getSubElementos()))
+                    #traslada el puntero temporal a la ruta
+                    if len(busqueda)>0:
+                        tmpPuntero=busqueda[0]
+                #incluye el archivo en el arbol
+                archivo.setNivel((tmpPuntero.getNivel())+1)
+                tmpPuntero.aniadirSubElemento(archivo)
+                #escribe el nuevo arbol en el archivo de persistencia
+                escribirArbol(arbol)
+            #si si existe el archivo en la ruta especificada, marcalo
+            elif destinoOcupado["disponible"]:
+                print("Ya existe un elemento con este nombre en la ruta especificada")
+            #si la ruta especificada no existe marcalo
+            elif (not(destinoDisponible["disponible"])):
+                print("La ruta especificada no existe")
+
+        #si si se especifica la ruta, y es una absoluta desde la raiz
+        elif ruta!=None and (ruta.startswith("/")):
+            #revisa si la ruta existe, y tambien si incluye un archivo de nombre igual
+            destinoDisponible=existeRuta(arbol, ruta, True)
+            destinoOcupado=existeRuta(arbol, (ruta+">"+nombre), True)
+            if (not(destinoOcupado["disponible"])) and (destinoDisponible["disponible"]):
+                #crea el objeto
+                if archivo:
+                    archivo=Archivo(nombre, 0, contenido)
+                if carpeta:
+                    archivo=Directorio(nombre, 0)
+                #posicionate en el directorio donde se debe insertar el archivo
+                tmpPuntero=arbol
+                for elemento in destinoDisponible["rutaObjetos"]:
+                    busqueda=list(filter(lambda x: x.getNombre()==elemento, tmpPuntero.getSubElementos()))
+                    #traslada el puntero temporal a la ruta
+                    if len(busqueda)>0:
+                        tmpPuntero=busqueda[0]
+                #incluye el archivo en el arbol
+                archivo.setNivel((tmpPuntero.getNivel())+1)
+                tmpPuntero.aniadirSubElemento(archivo)
+                #escribe el nuevo arbol en el archivo de persistencia
+                escribirArbol(arbol)
+            #si si existe el archivo en la ruta especificada, marcalo
+            elif destinoOcupado["disponible"]:
+                print("Ya existe un elemento con este nombre en la ruta especificada")
+            #si la ruta especificada no existe marcalo
+            elif (not(destinoDisponible["disponible"])):
+                print("La ruta especificada no existe")
+
+    else:
+        print("Nombre con caracteres inválidos")
