@@ -39,6 +39,10 @@ class Directorio:
     def getTipo(self):
         return "D"
 
+    def __str__(self):
+        cadena= str(str(self.getNivel())+", "+self.getNombre()+", "+ self.getTipo())
+        return cadena
+
 #objeto para clasificar los archivos
 class Archivo:
     def __init__(self, nombre, nivel, contenido):
@@ -73,6 +77,10 @@ class Archivo:
     #el puntero no puede estar en un archivo
     def getPuntero(self):
         return False
+
+    def __str__(self):
+        cadena= str(str(self.getNivel())+", "+self.getNombre()+", "+ self.getTipo())
+        return cadena
 
 #retorna una lista con los archivos convertidos a objetos y el txt sin estos
 def archivosAObjetos(lineasA):
@@ -245,15 +253,23 @@ def insertarSubcarpetas():
     #retornar el arbol, es decir, la raiz con cada hijo añadido
     return defObj["raiz"]
 
-
+#-------------------------------------------------------
 #recorrer el arbol de forma recursiva
-def recorreArbol(inicio):
+def recorreArbol(inicio, retorna=False, imprime=False):
     if inicio.getSubElementos()==[]:
         return []
     else:
         for a in inicio.getSubElementos():
-            print(f"Nivel= {a.getNivel()} Nombre= {a.getNombre()}")
-            recorreArbol(a)
+            if imprime==True:
+                print(f"Nivel= {a.getNivel()} Nombre= {a.getNombre()}")
+                recorreArbol(a, retorna, imprime)
+            if retorna==True:
+                if a.getTipo()=="F":
+                    separadorArchivo="$$$\"\"\"$$$"
+                    cadena=f"{str(a.getNivel())},{a.getNombre()},{a.getTipo()}\n{separadorArchivo}\n{a.getContenido()}\n{separadorArchivo}\n"
+                if a.getTipo()=="D":
+                    cadena=f"{str(a.getNivel())},{a.getNombre()},{a.getTipo()}\n"
+                return cadena+recorreArbol(a, retorna, imprime)
 
 #recorrer el arbol de forma recursiva para encontrar el puntero de ruta actual
 def buscaPuntero(inicio):
@@ -312,46 +328,89 @@ def existeRuta (arbol, ruta, archivo):
             disponible=True
 
     #rutas relativas
-    else:
+    elif not ruta.startswith("/"):
         #lista para almacenar
         rutaObjetos=[]
         #separar las rutas requeridas con el picoparentesis
         rutaRequerida=ruta.split(">")
         #buscar la ruta con el puntero activo
         puntero=buscaPuntero(arbol)
-        print(puntero.getSubElementos())
         #el primer elemento es el puntero en si mismo, tiene condiciones diferentes de busqueda
         ignoraLinea=True
         #buscar la ruta a partir del puntero
         for elemento in rutaRequerida:
             if ignoraLinea:
                 ignoraLinea=False
-                if puntero.getNombre()==elemento:
-                    rutaObjetos.append(elemento)
-                    tmp=puntero.getSubElementos()
-                    continue
+                elementoInPuntero=list(filter(lambda x: x.getNombre()==elemento, puntero.getSubElementos()))
+                if len(elementoInPuntero)==1:
+                    if archivo:
+                        rutaObjetos.append(elemento)
+                        tmp=elementoInPuntero[0].getSubElementos()
+                        continue
+                    if not archivo:
+                        rutaObjetos.append(elemento)
+                        rutaObjetos.pop(0)
+                        tmp=elementoInPuntero[0].getSubElementos()
+                        continue
                 else:
                     continue
             #si en el elemento de analisis actual coincide con el nombre, entonces si existe, cambia al siguiente subnivel
-            if archivo:
+            if archivo==True:
+                print("Si archivo")
                 existe=list(filter(lambda x: elemento==x.getNombre(), tmp))
             #si los archivos no son requeridos entonces solo verifica si existe el directorio
             if archivo==False:
+                print("no arhivo")
                 existe=list(filter(lambda x: elemento==x.getNombre(), tmp))
                 if existe[0].getTipo()=="F":
                     existe.pop(0)
             if len(existe)==1:
                 rutaObjetos.append(elemento)
                 try:
-                    tmp=tmp.getSubElementos()
+                    tmp=existe[0].getSubElementos()
                 except: break
         #al final del ciclo deben ambas listas deben tener la misma longitud
         if rutaObjetos==rutaRequerida:
             disponible=True
-
 
     retorno={
         "disponible":disponible,
         "rutaObjetos":rutaObjetos,
     }
     return retorno
+
+#-----------------------------------------------------------
+def opciones():
+    print("OPCIONES")
+    print("""
+                        ARCHIVOS                            DIRECTORIOS
+CREAR                   crearF *archivo*                    crearD *carpeta*
+ELIMINAR                eliminar *archivo*                  igual a archivos
+CAMBIAR NOMBRE          nombre *archivo* *nuevo nombre*     igual a archivos
+COPIAR                  copiar *archivo* *ruta*             igual a archivos
+MOVER                   mover *archivo* *ruta*              igual a archivos
+MODIFICAR CONTENIDO     editar *archivo*                    N/A
+LEER CONTENIDO          print *archivo*                     N/A
+IR A                    N/A                                 cd *ruta absoluta o relativa*
+DIRECTORIO ATRÁS        N/A                                 atras
+REGRESAR A RAIZ         N/A                                 /
+RUTA ACTUAL             N/A                                 actual
+MOSTRAR SUBCARPETAS     N/A                                 ls
+
+OPCIONES -> opciones
+SALIR -> salir
+
+          """)
+
+#--------------------------------------------------------
+#revisa si una determinada cadena es una ruta
+def esRuta(cadena):
+    if ">" in cadena:
+        return True
+    else:
+        return False
+
+#---------------------------------------------------------
+#escribe el contenido del arbol en el archivo de persistencia
+def escribirArbol(arbol):
+    pass
