@@ -438,7 +438,7 @@ def escribirArbol(arbol):
 #-----------------------------------------------------------
 #nombre de archivo valido determina ni no coniene algun caracter que afecte el funcionamiento del programa
 def nombreValido(cadena):
-    invalidos=[",", ">", "$$$\"\"\"$$$"]
+    invalidos=[",", ">", "$$$\"\"\"$$$", "/"]
     try:
         contieneInvalidos=list(filter(lambda x: x in cadena, invalidos))
         if len(contieneInvalidos)>0:
@@ -610,3 +610,89 @@ def eliminaElemento(arbol, ruta):
             tmpPuntero=recorrido[0]
         tmpPuntero.eliminarSubElemento(hijo)
         escribirArbol(arbol)
+
+
+#---------------------------------------------------------------
+#cambiar nombre, recibe el archivo o la ruta hacia el archivo y el nuevo nombre
+#verificar que el nuevo nombre no exista en la carpeta
+
+def cambiarNombre(arbol, ruta, nuevoNombre):
+    #obten el tipo de ruta
+    tRuta=tipoRuta(ruta)
+    #existe el elemento?
+    existeElemento=existeRuta(arbol, ruta, True)
+    #si no existe el elemento
+    if not existeElemento["disponible"]:
+        print("No existe el elemento a renombrar")
+    #la raiz no puede eliminarse
+    if ruta.strip()=="/":
+        print("No se puede renombrar la raiz")
+        return 1
+    if nuevoNombre.strip()=="":
+        print("No se puede dejar la carpeta sin renombrar")
+        return 1
+    if not nombreValido(nuevoNombre.strip()):
+        print("El nombre contiene caracteres ilegales")
+        return 1
+
+    #si la ruta no se especifica, entonces busca desde el puntero
+    if existeElemento["disponible"] and tRuta==3:
+        puntero=buscaPuntero(arbol)
+        #verifica que el nombre que se quiere insertar no exista en el puntero
+        problemaRenombre=list(filter(lambda x: x.getNombre()==nuevoNombre, puntero.getSubElementos()))
+        #si no existe, prosigue
+        if len(problemaRenombre)==0:
+            #obten el elemento al que se le quiere cambiar el nombre
+            elemento=list(filter(lambda x: x.getNombre()==ruta, puntero.getSubElementos()))
+            #cambiale el nombre
+            elemento[0].setNombre(nuevoNombre)
+            #reescribe los elementos en el arbol de persistencia
+            escribirArbol(arbol)
+        else:
+            print("No se puede llevar a cabo el renombramiento, ya existe un elemeto con este nombre")
+    #si la ruta es absoluta crea un puntero temporal que recorra el arbol hasta llegar al elemento
+    if existeElemento["disponible"] and tRuta==1:
+        #recorre los elementos de la ruta hasta llegar al penultimo
+        padre=existeElemento["rutaObjetos"].copy()
+        #no evalues la raiz
+        padre.pop(0)
+        hijo=padre.pop()
+        tmpPuntero=arbol
+        #si quedan elementos a revisar, recorre el arbol
+        if len(padre)>0:
+            for elemento in padre:
+                recorre=list(filter(lambda x: x.getNombre()==elemento, tmpPuntero.getSubElementos()))
+                tmpPuntero=recorre[0]
+        #si no quedan elementos a revisar, revisa si existe un elemento con ese nombre
+        problemaRenombre=list(filter(lambda x: x.getNombre()==nuevoNombre, tmpPuntero.getSubElementos()))
+        #no existe coincidencia de renombre
+        if len(problemaRenombre)==0:
+            elemento=list(filter(lambda x: x.getNombre()==hijo, tmpPuntero.getSubElementos()))
+            elemento[0].setNombre(nuevoNombre)
+            #reescribe el arbol de persistencia
+            escribirArbol(arbol)
+        #si existe coincidencia
+        else:
+            print("No se puede llevar a cabo el renombramiento, ya hay un elemento con dicho nombre")
+    #si se trata de una ruta relativa, eliminala desde el puntero
+    if existeElemento["disponible"] and tRuta==2:
+        tmpPuntero=buscaPuntero(arbol)
+        #recorre los elementos de la ruta hasta llegar al padre del hijo que se quiere eliminar
+        padre=existeElemento["rutaObjetos"].copy()
+        hijo=padre.pop()
+        for elemento in padre:
+            recorrido=list(filter(lambda x: x.getNombre()==elemento, tmpPuntero.getSubElementos()))
+            tmpPuntero=recorrido[0]
+        #verificar que no exista el nombre
+        problemaRenombre=list(filter(lambda x: x.getNombre()==nuevoNombre, tmpPuntero.getSubElementos()))
+        #si no hay problemas con el renombramiento
+        if len(problemaRenombre)==0:
+            #renombra
+            elemento=list(filter(lambda x: x.getNombre()==hijo, tmpPuntero.getSubElementos()))
+            elemento[0].setNombre(nuevoNombre)
+            #reescribe el arbol
+            escribirArbol(arbol)
+
+
+#-----------------------------------------------------
+

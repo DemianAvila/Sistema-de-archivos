@@ -1,8 +1,10 @@
 0,/,D
-1,carpeta0.2,D
+1,carpeta0.21,D
+2,carpeta0.2.1,D
+3,car,D
 1,carpeta0.4,D
 1,carpeta0.1,D
-1,texto0.1.txt,F
+1,tex.txt,F
 $$$"""$$$
 Contenido
 mas contenido
