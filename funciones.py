@@ -15,7 +15,7 @@ class Directorio:
         return self.contenido
 
     def eliminarSubElemento(self, nombre):
-        sinElemento=list(filter(lambda x: nombre!=x.nombre))
+        sinElemento=list(filter(lambda x: nombre!=x.nombre, self.getSubElementos()))
         self.contenido=sinElemento
 
     def getNombre(self):
@@ -446,6 +446,27 @@ def nombreValido(cadena):
         else: return True
     except: return False
 
+#----------------------------------------------------------
+#tipo ruta
+#1.- absoluta
+#2.- relativa
+#3.- nula y por o tanto se busca desde el puntero actual
+def tipoRuta(cadena):
+    rel=False
+    abso=False
+    #absoluta desde la raiz
+    if cadena.startswith("/"):
+        rel=True
+        return 1
+    #relativa
+    if ">" in cadena:
+        abso=True
+        return 2
+
+    if not rel and not abso:
+        return 3
+
+
 #--------------------------------------------------------
 #empiezan las funciones propias del sistema de archivos
 #crear archivo admite 4 parametros, el arbol de archivos(obligatorio),nombre (obligatorio), ruta(opcional), contenido(opcional)
@@ -533,3 +554,59 @@ def crearElemento(arbol, nombre, ruta=None, contenido="", archivo=False, carpeta
 
     else:
         print("Nombre con caracteres inválidos")
+
+
+#--------------------------------------------------------
+#eliminar elemento
+#verifica que la ruta existe (ya sea absoluta o relativa)
+#elimina el elemento
+#no permitir que se elimine la raiz
+def eliminaElemento(arbol, ruta):
+    #obten el tipo de ruta
+    tRuta=tipoRuta(ruta)
+    #existe el elemento?
+    existeElemento=existeRuta(arbol, ruta, True)
+    #si no existe el elemento
+    if not existeElemento["disponible"]:
+        print("No existe elemento a eliminar")
+    #la raiz no puede eliminarse
+    if ruta.strip()=="/":
+        print("No se puede eliminar la raiz")
+        return 1
+    #si la ruta no se especifica, entonces busca desde el puntero
+    if existeElemento["disponible"] and tRuta==3:
+        puntero=buscaPuntero(arbol)
+        #elimina la ruta del puntero
+        puntero.eliminarSubElemento(ruta)
+        #reescribe los elementos en el arbol de persistencia
+        escribirArbol(arbol)
+    #si la ruta es absoluta crea un puntero temporal que recorra el arbol hasta llegar al elemento
+    #para eiminarlo es preciso que no se llegue hasta el final, sino que de la carpeta padre, remover la referencia
+    if existeElemento["disponible"] and tRuta==1:
+        #recorre los elementos de la ruta hasta llegar al penultimo
+        padre=existeElemento["rutaObjetos"].copy()
+        #no evalues la raiz
+        padre.pop(0)
+        hijo=padre.pop()
+        tmpPuntero=arbol
+        #si quedan elementos a revisar, recorre el arbol
+        if len(padre)>0:
+            for elemento in padre:
+                recorre=list(filter(lambda x: x.getNombre()==elemento, tmpPuntero.getSubElementos()))
+                tmpPuntero=recorre[0]
+        #si no quedan elementos a revisar, simplemente elimina subelemento
+        #al final del recorrido, elimina al hijo del padre
+        tmpPuntero.eliminarSubElemento(hijo)
+        #reescribe el arbol de persistencia
+        escribirArbol(arbol)
+    #si se trata de una ruta relativa, eliminala desde el puntero
+    if existeElemento["disponible"] and tRuta==2:
+        tmpPuntero=buscaPuntero(arbol)
+        #recorre los elementos de la ruta hasta llegar al padre del hijo que se quiere eliminar
+        padre=existeElemento["rutaObjetos"].copy()
+        hijo=padre.pop()
+        for elemento in padre:
+            recorrido=list(filter(lambda x: x.getNombre()==elemento, tmpPuntero.getSubElementos()))
+            tmpPuntero=recorrido[0]
+        tmpPuntero.eliminarSubElemento(hijo)
+        escribirArbol(arbol)
