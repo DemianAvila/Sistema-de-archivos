@@ -1,4 +1,7 @@
 from functools import reduce
+import platform
+#solo se usa para abrir el notepad o vi para editar texto
+from subprocess import run
 
 #objeto para clasificar los directorios
 class Directorio:
@@ -1004,4 +1007,58 @@ def cortar (arbol, rFrom, rTo):
         print("No se puede copar, no se localiza el origen")
     elif not toExiste:
         print("No se puede copiar, no se localiza el destino")
+#--------------------------------------------------------------------
+#imprimir contenido
+def cat(arbol, ruta):
+    #verificar que exista el archivo
+    eR=existeRuta(arbol, ruta, True)
+    #si si existe, obten sus datos
+    if eR["disponible"]:
+        datosRuta=rec(arbol, ruta)
+        #verificar que sea archivo
+        if datosRuta["hijo"].getTipo()=="F":
+            print(datosRuta["hijo"].getContenido())
+        else:
+            print("No se puede impimir el contenido, el elemento es un directorio")
+    else:
+        print("El elemento a impimir no existe")
+
+#------------------------------------------------------------------------------
+#editar el contenido
+#abre una instancia de notepad o de vi para editar el archivo
+def editar(arbol, ruta):
+    #verificar que exista el archivo
+    eR=existeRuta(arbol, ruta, True)
+    #si si existe, obten sus datos
+    if eR["disponible"]:
+        datosRuta=rec(arbol, ruta)
+        #verificar que sea archivo
+        if datosRuta["hijo"].getTipo()=="F":
+            #crear un archivo temporal
+            temporal=open("tmp.txt", "w")
+            #escribir el contenido actual en el archivo
+            temporal.write(datosRuta["hijo"].getContenido())
+            temporal.close()
+            datosRuta["hijo"].setContenido("")
+            #abrir el archivo en instancia de vi si estas en linux
+            if platform.system()=="Linux":
+                run(["vi", "tmp.txt"])
+            #si se trata de windows abre el archivo con notepad
+            elif platform.system()=="Windows":
+                run(["notepad", "tmp.txt"])
+            #una vez terninado de editar el archivo, leelo y cambia el contenido dentro del arbol de archivos
+            temporal=open("tmp.txt", "r")
+            a=temporal.readlines()
+            temporal.close()
+            #escribir todos los cambios en el arbol
+            for linea in a:
+                datosRuta["hijo"].setContenido(datosRuta["hijo"].getContenido()+linea)
+            #escribe los cambios del arbol en el archivo
+            escribirArbol(arbol)
+
+        else:
+            print("No se puede editar el contenido, el elemento es un directorio")
+    else:
+        print("El elemento a editar no existe")
+#-----------------------------------------------------------------------------------
 

@@ -9,5 +9,7 @@ $$$"""$$$
 $$$"""$$$
 1,texto.txt,F
 $$$"""$$$
+Hola, acabo de editar este archivo en 
+mi propio sistema de archivos 7u7
 
 $$$"""$$$
