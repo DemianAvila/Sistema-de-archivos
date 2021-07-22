@@ -1,21 +1,13 @@
 0,/,D
-1,carpeta0.21,D
-2,carpeta0.2.1,D
-3,car,D
-1,carpeta0.4,D
-1,carpeta0.1,D
-2,tex.txt,F
+1,carpeta1,D
+2,carpeta2,D
+2,carpeta1,D
+3,carpeta2,D
+2,textoEmCarpeta.txt,F
 $$$"""$$$
-Contenido
-mas contenido
 
 $$$"""$$$
-2,carpeta0.21,D
-3,carpeta0.2.1,D
-4,car,D
-1,tex.txt,F
+1,texto.txt,F
 $$$"""$$$
-Contenido
-mas contenido
 
 $$$"""$$$

@@ -265,7 +265,7 @@ def recorreArbol(inicio, retorna=None, imprime=None, raiz=None):
 
     #imprime o retorna la raiz
     if imprime and raiz==None:
-        print(f"Nivel= {inicio.getNivel()} Nombre= {inicio.getNombre()}")
+        print(f"{inicio.getNombre()} <<raiz>>")
     if retorna and raiz==None:
         cadenaR=f"{str(inicio.getNivel())},{inicio.getNombre()},{inicio.getTipo()}\n"
     else:
@@ -277,7 +277,12 @@ def recorreArbol(inicio, retorna=None, imprime=None, raiz=None):
     else:
         for a in inicio.getSubElementos():
             if imprime==True:
-                print(f"Nivel= {a.getNivel()} Nombre= {a.getNombre()}")
+                for b in range(a.getNivel()):
+                    if b<(a.getNivel())-1:
+                        print("   ", end="")
+                    else:
+                        print("---", end="")
+                print(f">{a.getNombre()}")
                 recorreArbol(a, retorna, imprime, 1)
             if retorna==True:
                 if a.getTipo()=="F":
@@ -798,6 +803,24 @@ def nuevosObjetos (inicio, raiz=None):
             listaObjetos=list(filter(lambda x: x!="", listaObjetos))
     return listaObjetos
 
+#----------------------------------------------------
+#rectificar niveles
+def rectNiveles(inicio, nivel, raiz=None):
+    act=nivel
+    if raiz==None:
+        inicio.setNivel(act)
+
+    if inicio.getSubElementos()==[]:
+        return ""
+
+    else:
+        for a in inicio.getSubElementos():
+            if raiz==None:
+                a.setNivel(act+1)
+            else:
+                a.setNivel(act)
+            rectNiveles(a, a.getNivel()+1, True)
+
 #-----------------------------------------------------
 #copiar, recibe 2 ruta desde y hacia, copia el contenido de una dentro de la otra
 def copiar (arbol, rFrom, rTo):
@@ -820,15 +843,11 @@ def copiar (arbol, rFrom, rTo):
         coincidencia=list(filter(lambda x: x.getNombre()==datosFrom["hijo"].getNombre(), datosTo["hijo"].getSubElementos()))
         #si no hay coincidencias de nombre, escribe al hijo del origen en los subelementos del destino
         if len(coincidencia)==0:
-            #datosTo["hijo"].aniadirSubElemento(datosFrom["hijo"])
-            #actualizar el nivel de los datos insertados
-            #elemento=list(filter(lambda x: x.getNombre()==datosFrom["hijo"].getNombre(), datosTo["hijo"].getSubElementos()))
-            #retorna=recorreArbol(datosTo["hijo"], retorna=True)
-            #print(retorna)
-
             #si el nivel del destino es el mismo del origen o mayor al del origen, cambia ese nivel
             if datosTo["hijo"].getNivel()<=datosFrom["hijo"].getNivel():
                 cambioNivel=datosTo["hijo"].getNivel()
+            #if datosTo["hijo"].getNivel()==datosFrom["hijo"].getNivel():
+            #    cambioNivel=0
             #si el nivel del origen es menor al del destino, resta el destino del origen
             if datosTo["hijo"].getNivel()>datosFrom["hijo"].getNivel():
                 cambioNivel=-(datosTo["hijo"].getNivel())
@@ -881,6 +900,7 @@ def copiar (arbol, rFrom, rTo):
                 #añadir los nuevos objetos a el destino
                 datosTo["hijo"].aniadirSubElemento(listaNuevosO[0])
                 #escribir los cambios a el archivo
+                rectNiveles(arbol, arbol.getNivel())
                 escribirArbol(arbol)
             #si si hay coincidencias
         else:
@@ -893,4 +913,95 @@ def copiar (arbol, rFrom, rTo):
 
 #----------------------------------------------------------------------------------
 #funcion cortar es lo mismo que copiar pero borra el origen
+def cortar (arbol, rFrom, rTo):
+    #ambas rutas existen
+    fromExiste=False
+    toExiste=False
+    rutaFrom=existeRuta(arbol,rFrom, True)
+    rutaTo=existeRuta(arbol,rTo, False)
+    if rutaFrom["disponible"]:
+        fromExiste=True
+    if rutaFrom["disponible"]:
+        toExiste=True
+    datosFrom=rec(arbol, rFrom)
+    datosTo=rec(arbol, rTo)
+    #verificar que el detino sea una carpeta
+    if datosTo["hijo"].getTipo()=="F":
+        toExiste=False
+    #verifica que adentro de la ruta destino no exista lo que se va a copiar
+    if fromExiste and toExiste:
+        coincidencia=list(filter(lambda x: x.getNombre()==datosFrom["hijo"].getNombre(), datosTo["hijo"].getSubElementos()))
+        #si no hay coincidencias de nombre, escribe al hijo del origen en los subelementos del destino
+        if len(coincidencia)==0:
+            #elimina al origen----------------------
+            #---------------------------------------
+            datosFrom["padre"].eliminarSubElemento(datosFrom["hijo"].getNombre())
+            #------------------------------------------------------
+            #--------------------------------------------------
+            #si el nivel del destino es el mismo del origen o mayor al del origen, cambia ese nivel
+            if datosTo["hijo"].getNivel()<=datosFrom["hijo"].getNivel():
+                cambioNivel=datosTo["hijo"].getNivel()
+            #if datosTo["hijo"].getNivel()==datosFrom["hijo"].getNivel():
+            #    cambioNivel=0
+            #si el nivel del origen es menor al del destino, resta el destino del origen
+            if datosTo["hijo"].getNivel()>datosFrom["hijo"].getNivel():
+                cambioNivel=-(datosTo["hijo"].getNivel())
+
+
+            #convertir a texto los dastos del hijo para crear nuevos objetos
+            nO=nuevosObjetos(datosFrom["hijo"])
+            listaNuevosO=[]
+            for i in nO:
+                if i["tipo"]=="F":
+                    print("archivo")
+                    elemento=Archivo(i["nombre"], (i["nivel"]+cambioNivel), i["contenido"])
+                if i["tipo"]=="D":
+                    elemento=Directorio(i["nombre"], (i["nivel"]+cambioNivel))
+                listaNuevosO.append(elemento)
+
+            #si el elemento a copiar es archivo
+            if datosFrom["hijo"].getTipo()=="F":
+                print(listaNuevosO)
+                #añade el nuevo objeto al destino
+                datosTo["hijo"].aniadirSubElemento(listaNuevosO[0])
+                #escribir cambios
+                escribirArbol(arbol)
+
+            #si el elemento a copiar es dirctorio
+            if datosFrom["hijo"].getTipo()=="D":
+                #obtener el nivel mas alto para ir insertando los objetos uno tras otro
+                def profMasAlta(inicio, siguiente):
+                    if siguiente>=inicio:
+                        return siguiente
+                    else:
+                        return inicio
+                profundidadMasAlta=reduce(profMasAlta, list(map(lambda x: x.getNivel(), listaNuevosO)), 0)
+                #lista para introducir a los elementos hijos
+                tmp=[]
+                #introducir de forma recursiva los elementos hijos al padre
+                for i in range(profundidadMasAlta, listaNuevosO[0].getNivel()-1, (-1)):
+                    #recorrer los elementos de la lista
+                    for b in list(reversed(listaNuevosO)):
+                        #si el nivel mas profundo se encuentra con uno de nivel inferior insertalo
+                        if b.getNivel()==i:
+                            #guardalo en una variable
+                            tmp.append(b)
+                        #si hay algo en la variable tmp donde su nivel sea mayor al analizado en estemomento, insertalo y elimina tmp
+                        if len(tmp)>0 and (b.getNivel())==i-1:
+                            for c in tmp:
+                                b.aniadirSubElemento(c)
+                            #vacial lista temporal
+                            tmp=[]
+                #añadir los nuevos objetos a el destino
+                datosTo["hijo"].aniadirSubElemento(listaNuevosO[0])
+                #escribir los cambios a el archivo
+                rectNiveles(arbol, arbol.getNivel())
+                escribirArbol(arbol)
+            #si si hay coincidencias
+        else:
+            print("No se puede copiar a la ruta especificada, hay un conflicto de nombres")
+    elif not fromExiste:
+        print("No se puede copar, no se localiza el origen")
+    elif not toExiste:
+        print("No se puede copiar, no se localiza el destino")
 
