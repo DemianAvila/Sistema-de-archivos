@@ -261,7 +261,7 @@ def insertarSubcarpetas():
 
 #-------------------------------------------------------
 #recorrer el arbol de forma recursiva
-def recorreArbol(inicio, retorna=False, imprime=False, raiz=None):
+def recorreArbol(inicio, retorna=None, imprime=None, raiz=None):
 
     #imprime o retorna la raiz
     if imprime and raiz==None:
@@ -291,6 +291,17 @@ def recorreArbol(inicio, retorna=False, imprime=False, raiz=None):
                 cadena=cadena+subcadena
         if retorna:
             return cadena
+#------------------------------------------------------
+def cambiarNivelRecu(arbol, cantidad):
+
+    if arbol.getSubElementos()==[]:
+        return ""
+    else:
+        for a in arbol.getSubElementos():
+            a.setNivel(cantidad+a.getNivel())
+            recorreArbol(a, cantidad)
+
+
 #--------------------------------------------------------------------
 #recorrer el arbol de forma recursiva para encontrar el puntero de ruta actual
 def buscaPuntero(inicio):
@@ -693,6 +704,193 @@ def cambiarNombre(arbol, ruta, nuevoNombre):
             #reescribe el arbol
             escribirArbol(arbol)
 
+#--------------------------------------------------------------------
+#recorrer de acuerdo al tipo
+def rec(arbol, ruta):
+    existeElemento=existeRuta(arbol, ruta, True)
+    tRuta=tipoRuta(ruta)
+
+    #si la ruta no se especifica, entonces busca desde el puntero
+    if existeElemento["disponible"] and tRuta==3:
+        padre=buscaPuntero(arbol)
+        hijo=list(filter(lambda x: x.getNombre()==ruta, padre.getSubElementos()))
+        hijo=hijo[0]
+
+    #si la ruta es absoluta crea un puntero temporal que recorra el arbol hasta llegar al elemento
+    if existeElemento["disponible"] and tRuta==1:
+        #recorre los elementos de la ruta hasta llegar al penultimo
+        padre=existeElemento["rutaObjetos"].copy()
+        #no evalues la raiz
+        padre.pop(0)
+        hijo=padre.pop()
+        tmpPuntero=arbol
+        #si quedan elementos a revisar, recorre el arbol
+        if len(padre)>0:
+            for elemento in padre:
+                recorre=list(filter(lambda x: x.getNombre()==elemento, tmpPuntero.getSubElementos()))
+                tmpPuntero=recorre[0]
+        elemento=list(filter(lambda x: x.getNombre()==hijo, tmpPuntero.getSubElementos()))
+        padre=tmpPuntero
+        hijo=elemento[0]
+
+    #si se trata de una ruta relativa, eliminala desde el puntero
+    if existeElemento["disponible"] and tRuta==2:
+        tmpPuntero=buscaPuntero(arbol)
+        #recorre los elementos de la ruta hasta llegar al padre del hijo que se quiere eliminar
+        padre=existeElemento["rutaObjetos"].copy()
+        hijo=padre.pop()
+        for elemento in padre:
+            recorrido=list(filter(lambda x: x.getNombre()==elemento, tmpPuntero.getSubElementos()))
+            tmpPuntero=recorrido[0]
+        elemento=list(filter(lambda x: x.getNombre()==hijo, tmpPuntero.getSubElementos()))
+        padre=tmpPuntero
+        hijo=elemento[0]
+
+
+    return {
+        "padre": padre,
+        "hijo": hijo
+    }
+
+#----------------------------------------------------------
+def nuevosObjetos (inicio, raiz=None):
+    #imprime o retorna la raiz
+    listaObjetos=[]
+    if raiz==None:
+        cadenaR={
+            'nombre':inicio.getNombre(),
+            'nivel': inicio.getNivel(),
+            "tipo": inicio.getTipo(),
+        }
+        if inicio.getTipo()=="F":
+            cadenaR["contenido"]=inicio.getContenido()
+    else:
+        cadenaR=""
+
+    listaObjetos.append(cadenaR)
+    cadena=""
+
+    if inicio.getSubElementos()==[]:
+        if raiz==None:
+            listaObjetos=list(filter(lambda x: x!="", listaObjetos))
+            return listaObjetos
+        else:
+            return ""
+
+    else:
+        for a in inicio.getSubElementos():
+            if a.getTipo()=="F":
+                cadena={
+                    "nombre": a.getNombre(),
+                    "nivel": a.getNivel(),
+                    "tipo": a.getTipo(),
+                    "contenido": a.getContenido()
+                }
+            if a.getTipo()=="D":
+                cadena={
+                    "nombre": a.getNombre(),
+                    "nivel": a.getNivel(),
+                    "tipo": a.getTipo(),
+                }
+
+            listaObjetos.append(cadena)
+            listaObjetos.extend(nuevosObjetos(a, True))
+            listaObjetos=list(filter(lambda x: x!="", listaObjetos))
+    return listaObjetos
 
 #-----------------------------------------------------
+#copiar, recibe 2 ruta desde y hacia, copia el contenido de una dentro de la otra
+def copiar (arbol, rFrom, rTo):
+    #ambas rutas existen
+    fromExiste=False
+    toExiste=False
+    rutaFrom=existeRuta(arbol,rFrom, True)
+    rutaTo=existeRuta(arbol,rTo, False)
+    if rutaFrom["disponible"]:
+        fromExiste=True
+    if rutaFrom["disponible"]:
+        toExiste=True
+    datosFrom=rec(arbol, rFrom)
+    datosTo=rec(arbol, rTo)
+    #verificar que el detino sea una carpeta
+    if datosTo["hijo"].getTipo()=="F":
+        toExiste=False
+    #verifica que adentro de la ruta destino no exista lo que se va a copiar
+    if fromExiste and toExiste:
+        coincidencia=list(filter(lambda x: x.getNombre()==datosFrom["hijo"].getNombre(), datosTo["hijo"].getSubElementos()))
+        #si no hay coincidencias de nombre, escribe al hijo del origen en los subelementos del destino
+        if len(coincidencia)==0:
+            #datosTo["hijo"].aniadirSubElemento(datosFrom["hijo"])
+            #actualizar el nivel de los datos insertados
+            #elemento=list(filter(lambda x: x.getNombre()==datosFrom["hijo"].getNombre(), datosTo["hijo"].getSubElementos()))
+            #retorna=recorreArbol(datosTo["hijo"], retorna=True)
+            #print(retorna)
+
+            #si el nivel del destino es el mismo del origen o mayor al del origen, cambia ese nivel
+            if datosTo["hijo"].getNivel()<=datosFrom["hijo"].getNivel():
+                cambioNivel=datosTo["hijo"].getNivel()
+            #si el nivel del origen es menor al del destino, resta el destino del origen
+            if datosTo["hijo"].getNivel()>datosFrom["hijo"].getNivel():
+                cambioNivel=-(datosTo["hijo"].getNivel())
+
+
+            #convertir a texto los dastos del hijo para crear nuevos objetos
+            nO=nuevosObjetos(datosFrom["hijo"])
+            listaNuevosO=[]
+            for i in nO:
+                if i["tipo"]=="F":
+                    print("archivo")
+                    elemento=Archivo(i["nombre"], (i["nivel"]+cambioNivel), i["contenido"])
+                if i["tipo"]=="D":
+                    elemento=Directorio(i["nombre"], (i["nivel"]+cambioNivel))
+                listaNuevosO.append(elemento)
+
+            #si el elemento a copiar es archivo
+            if datosFrom["hijo"].getTipo()=="F":
+                print(listaNuevosO)
+                #añade el nuevo objeto al destino
+                datosTo["hijo"].aniadirSubElemento(listaNuevosO[0])
+                #escribir cambios
+                escribirArbol(arbol)
+
+            #si el elemento a copiar es dirctorio
+            if datosFrom["hijo"].getTipo()=="D":
+                #obtener el nivel mas alto para ir insertando los objetos uno tras otro
+                def profMasAlta(inicio, siguiente):
+                    if siguiente>=inicio:
+                        return siguiente
+                    else:
+                        return inicio
+                profundidadMasAlta=reduce(profMasAlta, list(map(lambda x: x.getNivel(), listaNuevosO)), 0)
+                #lista para introducir a los elementos hijos
+                tmp=[]
+                #introducir de forma recursiva los elementos hijos al padre
+                for i in range(profundidadMasAlta, listaNuevosO[0].getNivel()-1, (-1)):
+                    #recorrer los elementos de la lista
+                    for b in list(reversed(listaNuevosO)):
+                        #si el nivel mas profundo se encuentra con uno de nivel inferior insertalo
+                        if b.getNivel()==i:
+                            #guardalo en una variable
+                            tmp.append(b)
+                        #si hay algo en la variable tmp donde su nivel sea mayor al analizado en estemomento, insertalo y elimina tmp
+                        if len(tmp)>0 and (b.getNivel())==i-1:
+                            for c in tmp:
+                                b.aniadirSubElemento(c)
+                            #vacial lista temporal
+                            tmp=[]
+                #añadir los nuevos objetos a el destino
+                datosTo["hijo"].aniadirSubElemento(listaNuevosO[0])
+                #escribir los cambios a el archivo
+                escribirArbol(arbol)
+            #si si hay coincidencias
+        else:
+            print("No se puede copiar a la ruta especificada, hay un conflicto de nombres")
+    elif not fromExiste:
+        print("No se puede copar, no se localiza el origen")
+    elif not toExiste:
+        print("No se puede copiar, no se localiza el destino")
+
+
+#----------------------------------------------------------------------------------
+#funcion cortar es lo mismo que copiar pero borra el origen
 
