@@ -18,6 +18,7 @@ while not salida:
     parametrosComando=comando.split(",")
 
     if parametrosComando[0]=="salir":
+        print("Hasta luego \\≧▽≦/")
         salida=True
 
     elif parametrosComando[0]=="opciones":
@@ -31,7 +32,7 @@ while not salida:
         elif len(parametrosComando)==3:
             crearElemento(arbol, parametrosComando[1], ruta=parametrosComando[2], archivo=True)
         #solo se pasa nombre
-        elif len(parametrosComando)==1:
+        elif len(parametrosComando)==2:
             crearElemento(arbol, parametrosComando[1], archivo=True)
         else:
             print("Numero de parametros incorrectos")
@@ -41,7 +42,7 @@ while not salida:
         if len(parametrosComando)==3:
             crearElemento(arbol, parametrosComando[1], ruta=parametrosComando[2], carpeta=True)
         #solo se pasa nombre
-        elif len(parametrosComando)==1:
+        elif len(parametrosComando)==2:
             crearElemento(arbol, parametrosComando[1], carpeta=True)
         else:
             print("Numero de parametros incorrectos")
