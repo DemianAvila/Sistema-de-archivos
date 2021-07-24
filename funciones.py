@@ -10,6 +10,7 @@ class Directorio:
         self.nivel=nivel
         self.puntero=False
         self.contenido=[]
+        self.padre=None
 
     def aniadirSubElemento(self, subElem):
         self.contenido.append(subElem)
@@ -45,6 +46,12 @@ class Directorio:
     def __str__(self):
         cadena= str(str(self.getNivel())+", "+self.getNombre()+", "+ self.getTipo())
         return cadena
+
+    def getPadre(self):
+        return self.padre
+
+    def setPadre(self, elemento):
+        self.padre=elemento
 
 #objeto para clasificar los archivos
 class Archivo:
@@ -84,6 +91,12 @@ class Archivo:
     def __str__(self):
         cadena= str(str(self.getNivel())+", "+self.getNombre()+", "+ self.getTipo())
         return cadena
+
+    def getPadre(self):
+        return self.padre
+
+    def setPadre(self, elemento):
+        self.padre=elemento
 
 #retorna una lista con los archivos convertidos a objetos y el txt sin estos
 def archivosAObjetos(lineasA):
@@ -265,7 +278,6 @@ def insertarSubcarpetas():
 #-------------------------------------------------------
 #recorrer el arbol de forma recursiva
 def recorreArbol(inicio, retorna=None, imprime=None, raiz=None):
-
     #imprime o retorna la raiz
     if imprime and raiz==None:
         print(f"{inicio.getNombre()} <<raiz>>")
@@ -299,6 +311,21 @@ def recorreArbol(inicio, retorna=None, imprime=None, raiz=None):
                 cadena=cadena+subcadena
         if retorna:
             return cadena
+
+#------------------------------------------------------
+def establecePadres(inicio, raiz=None):
+    #imprime o retorna la raiz
+    if raiz==None:
+        inicio.setPadre(None)
+
+    if inicio.getSubElementos()==[]:
+        return ""
+    else:
+        for a in inicio.getSubElementos():
+            a.setPadre(inicio)
+            establecePadres(a, True)
+
+
 #------------------------------------------------------
 def cambiarNivelRecu(arbol, cantidad):
 
@@ -313,17 +340,16 @@ def cambiarNivelRecu(arbol, cantidad):
 #--------------------------------------------------------------------
 #recorrer el arbol de forma recursiva para encontrar el puntero de ruta actual
 def buscaPuntero(inicio):
-    if inicio.getPuntero()==True:
-        return inicio
+    listaRetorno=[]
+    if inicio.getPuntero()==True :
+        listaRetorno.append(inicio)
     if inicio.getSubElementos()==[]:
-        return []
-    else:
-        for a in inicio.getSubElementos():
-            if a.getPuntero()==True:
-                return a
-            else:
-                recorreArbol(a)
-
+        return ""
+    for a in inicio.getSubElementos():
+        if a.getPuntero()==True:
+            listaRetorno.append(a)
+        listaRetorno.extend(buscaPuntero(a))
+    return listaRetorno
 
 #------------------------inicio funciones de sistema de archivos----
 #-----navegación--------
@@ -372,7 +398,7 @@ def existeRuta (arbol, ruta, archivo):
         #separar las rutas requeridas con el picoparentesis
         rutaRequerida=ruta.split(">")
         #buscar la ruta con el puntero activo
-        puntero=buscaPuntero(arbol)
+        puntero=buscaPuntero(arbol)[0]
         #el primer elemento es el puntero en si mismo, tiene condiciones diferentes de busqueda
         ignoraLinea=True
         #buscar la ruta a partir del puntero
@@ -473,6 +499,9 @@ def nombreValido(cadena):
 def tipoRuta(cadena):
     rel=False
     abso=False
+    #solo es la raiz
+    if cadena.strip()=="/":
+        return 4
     #absoluta desde la raiz
     if cadena.startswith("/"):
         rel=True
@@ -499,7 +528,7 @@ def crearElemento(arbol, nombre, ruta=None, contenido="", archivo=False, carpeta
             archivo=Directorio(nombre, 0)
         #si no se tiene ruta se va a escribir en el puntero actual
         if ruta==None:
-            puntero=buscaPuntero(arbol)
+            puntero=buscaPuntero(arbol)[0]
             #verifica si existe el archivo en la ruta actual
             existe=list(filter(lambda x: x.getNombre()==nombre, puntero.getSubElementos()))
             #si si existe, manda mensaje de error
@@ -523,7 +552,7 @@ def crearElemento(arbol, nombre, ruta=None, contenido="", archivo=False, carpeta
                 if carpeta:
                     archivo=Directorio(nombre, 0)
                 #posicionate en el directorio donde se debe insertar el archivo
-                tmpPuntero=(buscaPuntero(arbol))
+                tmpPuntero=(buscaPuntero(arbol)[0])
                 for elemento in destinoDisponible["rutaObjetos"]:
                     busqueda=list(filter(lambda x: x.getNombre()==elemento, tmpPuntero.getSubElementos()))
                     #traslada el puntero temporal a la ruta
@@ -594,7 +623,7 @@ def eliminaElemento(arbol, ruta):
         return 1
     #si la ruta no se especifica, entonces busca desde el puntero
     if existeElemento["disponible"] and tRuta==3:
-        puntero=buscaPuntero(arbol)
+        puntero=buscaPuntero(arbol)[0]
         #elimina la ruta del puntero
         puntero.eliminarSubElemento(ruta)
         #reescribe los elementos en el arbol de persistencia
@@ -620,7 +649,7 @@ def eliminaElemento(arbol, ruta):
         escribirArbol(arbol)
     #si se trata de una ruta relativa, eliminala desde el puntero
     if existeElemento["disponible"] and tRuta==2:
-        tmpPuntero=buscaPuntero(arbol)
+        tmpPuntero=buscaPuntero(arbol)[0]
         #recorre los elementos de la ruta hasta llegar al padre del hijo que se quiere eliminar
         padre=existeElemento["rutaObjetos"].copy()
         hijo=padre.pop()
@@ -656,7 +685,7 @@ def cambiarNombre(arbol, ruta, nuevoNombre):
 
     #si la ruta no se especifica, entonces busca desde el puntero
     if existeElemento["disponible"] and tRuta==3:
-        puntero=buscaPuntero(arbol)
+        puntero=buscaPuntero(arbol)[0]
         #verifica que el nombre que se quiere insertar no exista en el puntero
         problemaRenombre=list(filter(lambda x: x.getNombre()==nuevoNombre, puntero.getSubElementos()))
         #si no existe, prosigue
@@ -695,7 +724,7 @@ def cambiarNombre(arbol, ruta, nuevoNombre):
             print("No se puede llevar a cabo el renombramiento, ya hay un elemento con dicho nombre")
     #si se trata de una ruta relativa, eliminala desde el puntero
     if existeElemento["disponible"] and tRuta==2:
-        tmpPuntero=buscaPuntero(arbol)
+        tmpPuntero=buscaPuntero(arbol)[0]
         #recorre los elementos de la ruta hasta llegar al padre del hijo que se quiere eliminar
         padre=existeElemento["rutaObjetos"].copy()
         hijo=padre.pop()
@@ -720,7 +749,7 @@ def rec(arbol, ruta):
 
     #si la ruta no se especifica, entonces busca desde el puntero
     if existeElemento["disponible"] and tRuta==3:
-        padre=buscaPuntero(arbol)
+        padre=buscaPuntero(arbol)[0]
         hijo=list(filter(lambda x: x.getNombre()==ruta, padre.getSubElementos()))
         hijo=hijo[0]
 
@@ -743,7 +772,7 @@ def rec(arbol, ruta):
 
     #si se trata de una ruta relativa, eliminala desde el puntero
     if existeElemento["disponible"] and tRuta==2:
-        tmpPuntero=buscaPuntero(arbol)
+        tmpPuntero=buscaPuntero(arbol)[0]
         #recorre los elementos de la ruta hasta llegar al padre del hijo que se quiere eliminar
         padre=existeElemento["rutaObjetos"].copy()
         hijo=padre.pop()
@@ -753,6 +782,10 @@ def rec(arbol, ruta):
         elemento=list(filter(lambda x: x.getNombre()==hijo, tmpPuntero.getSubElementos()))
         padre=tmpPuntero
         hijo=elemento[0]
+
+    if existeElemento["disponible"] and tRuta==4:
+        hijo=arbol
+        padre=None
 
 
     return {
@@ -1061,4 +1094,84 @@ def editar(arbol, ruta):
     else:
         print("El elemento a editar no existe")
 #-----------------------------------------------------------------------------------
+#ir a, cambia el puntero a la ruta especificada
+#debe retornar la ruta actual
+def cd(arbol, ruta):
+    #verificar si existe la ruta
+    eR=existeRuta(arbol, ruta, True)
+    #si si existe, obten sus datos
+    if eR["disponible"]:
+        datosRuta=rec(arbol, ruta)
+        #si la ruta es la raiz, pon ahi el puntero y borra el anterior
+        if datosRuta["hijo"].getTipo()=="D":
+            if len(eR["rutaObjetos"])==0 and eR["rutaObjetos"][0]=="/":
+                puntero=buscaPuntero(arbol)[0]
+                arbol.setPuntero(True)
+                puntero.setPuntero(False)
+            #si no, busca el puntero y remuevelo
+            else:
+                puntero=buscaPuntero(arbol)[0]
+                puntero.setPuntero(False)
+                datosRuta["hijo"].setPuntero(True)
+                #pon el puntero en la ruta
+                print(datosRuta["hijo"])
+
+        else:
+            print("No se puede trasladar a esta ruta")
+    else:
+        print("No se puede trasladar a esta ruta")
+
+#------------------------------------------------------------------------------
+#ruta actual, retorna una lista con la ruta absoluta de la ubicacion actual
+def rutaActual(arbol):
+    #busca el puntero
+    puntero=buscaPuntero(arbol)[0]
+    #funcion para recorrer el arbol hacia arriba
+    def subeArbol(punt, inicio=None):
+        listaArbol=[]
+        print(punt.getNombre())
+        if inicio==None:
+            listaArbol.append(punt)
+        if punt.getPadre()==None:
+            return []
+        else:
+            listaArbol.append(punt.getPadre())
+
+        listaArbol.extend(subeArbol(punt.getPadre(), True))
+        listaArbol=list(filter(lambda x: x!=[], listaArbol))
+        return listaArbol
+
+    retorno=subeArbol(puntero)
+    retorno=list(reversed(retorno))
+    return retorno
+#------------------------------------------------------------------------------
+#mostrar subcarpetas
+def mostrarSC(arbol, ruta=None):
+    #si no se provee ruta, lista los archivos de la ruta actual
+    if ruta==None:
+        puntero=buscaPuntero(arbol)[0]
+        return puntero.getSubElementos()
+    #si si se provee ruta
+    else:
+        #verifica que la ruta existe
+        eR=existeRuta(arbol,ruta, False)
+        #si si existe la ruta, obten sus datos
+        if eR["disponible"]:
+            datosRuta=rec(arbol, ruta)
+            #verifica si la ruta espeficidada es un directorio
+            if datosRuta["hijo"].getTipo()=="D":
+                #si si, regresa los subelementos
+                return datosRuta["hijo"].getSubElementos()
+#------------------------------------------------------------------------------
+#ruta atras, de ser posible, mueve el puntero hacia el padre
+def atras(arbol):
+    #busca el puntero
+    puntero=buscaPuntero(arbol)[0]
+    #si el puntero es la raiz manda mensaje
+    if puntero.getPadre()==None:
+        print("No se puede subir mas, estás en la raiz")
+    else:
+        puntero.setPuntero(False)
+        puntero=puntero.getPadre()
+        puntero.setPuntero(True)
 

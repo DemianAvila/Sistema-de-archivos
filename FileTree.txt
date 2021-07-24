@@ -1,15 +1,22 @@
 0,/,D
-1,carpeta1,D
-2,carpeta2,D
-2,carpeta1,D
-3,carpeta2,D
-2,textoEmCarpeta.txt,F
+1,car1,D
+1,car2,D
+2,car3,D
+3,texto3.txt,F
 $$$"""$$$
 
 $$$"""$$$
+2,car4,D
+2,texto2.txt,F
+$$$"""$$$
+
+$$$"""$$$
+1,car1.1,D
 1,texto.txt,F
 $$$"""$$$
-Hola, acabo de editar este archivo en 
-mi propio sistema de archivos 7u7
+
+$$$"""$$$
+3,texto3.txt,F
+$$$"""$$$
 
 $$$"""$$$
